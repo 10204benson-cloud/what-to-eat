@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>今天吃什麼?</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    background: linear-gradient(160deg, #fff3d6, #ffd9c2);
+    color: #4a3428;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { text-align: center; font-size: 2.2rem; margin: 8px 0 4px; }
+  .sub { text-align: center; margin: 0 0 24px; opacity: .8; }
+  .card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 6px 20px rgba(120, 70, 30, .15);
+    margin-bottom: 20px;
+  }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 20px; }
+  .filters button {
+    border: 2px solid #ff8a4c; background: #fff; color: #ff8a4c;
+    padding: 6px 14px; border-radius: 999px; cursor: pointer; font-size: 1rem;
+  }
+  .filters button.active { background: #ff8a4c; color: #fff; }
+  #result {
+    font-size: 2.4rem; font-weight: bold; text-align: center;
+    min-height: 90px; display: flex; align-items: center; justify-content: center;
+    color: #e0561b;
+  }
+  #go {
+    display: block; width: 100%; padding: 14px; font-size: 1.3rem;
+    background: #ff8a4c; color: #fff; border: 0; border-radius: 14px; cursor: pointer;
+  }
+  #go:hover { background: #f27430; }
+  #go:disabled { opacity: .6; cursor: wait; }
+  h2 { margin-top: 0; }
+  ol li, ul li { margin-bottom: 8px; line-height: 1.6; }
+  #history { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; list-style: none; }
+  #history li { background: #ffe9d6; padding: 4px 12px; border-radius: 999px; margin: 0; }
+  .tip { background: #fff7e0; border-left: 5px solid #ffb703; padding: 10px 14px; border-radius: 8px; }
+  footer { text-align: center; font-size: .85rem; opacity: .7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🍜 今天吃什麼?</h1>
+  <p class="sub">選擇困難症救星:按一下,讓命運幫你決定!</p>
+
+  <div class="card">
+    <div class="filters" id="filters"></div>
+    <div id="result">按下按鈕開始 👇</div>
+    <button id="go">🎲 幫我決定!</button>
+  </div>
+
+  <div class="card">
+    <h2>📜 最近抽到的</h2>
+    <ul id="history"><li>還沒有紀錄</li></ul>
+  </div>
+
+  <div class="card">
+    <h2>📖 如何使用這個網站</h2>
+    <ol>
+      <li><b>選分類(可不選):</b>上方有「全部、飯類、麵類、小吃、輕食、飲料甜點」,點一下就只會從那一類抽。預設是「全部」。</li>
+      <li><b>按「幫我決定!」:</b>畫面會快速跳動幾個選項,最後停下來的就是今天的答案。</li>
+      <li><b>不滿意?再按一次:</b>可以一直重抽,直到你滿意為止。</li>
+      <li><b>看紀錄:</b>抽過的結果會顯示在「最近抽到的」,最多保留 8 筆,避免你連吃三天一樣的。</li>
+    </ol>
+    <p class="tip">💡 小提醒:這個網站是用 HTML + CSS + JavaScript 做成的單一檔案,不需要資料庫,所以可以免費放在 GitHub 和 Cloudflare 上。</p>
+  </div>
+
+  <footer>Made with ❤️ 我的第一個網站</footer>
+</div>
+
+<script>
+  const foods = {
+    "飯類": ["滷肉飯", "雞腿便當", "咖哩飯", "燒肉丼", "炒飯", "控肉飯"],
+    "麵類": ["牛肉麵", "擔仔麵", "義大利麵", "拉麵", "乾麵+燙青菜", "麻醬涼麵"],
+    "小吃": ["鹽酥雞", "蚵仔煎", "臭豆腐", "水煎包", "胡椒餅", "生煎包"],
+    "輕食": ["三明治", "沙拉", "飯糰", "蛋餅", "吐司", "超商御飯糰"],
+    "飲料甜點": ["珍珠奶茶", "豆花", "芒果冰", "雞蛋糕", "仙草凍飲", "鬆餅"]
+  };
+
+  let current = "全部";
+  const filtersEl = document.getElementById("filters");
+  const resultEl = document.getElementById("result");
+  const goBtn = document.getElementById("go");
+  const historyEl = document.getElementById("history");
+  const history = [];
+
+  function pool() {
+    if (current === "全部") return Object.values(foods).flat();
+    return foods[current];
+  }
+
+  function renderFilters() {
+    filtersEl.innerHTML = "";
+    ["全部", ...Object.keys(foods)].forEach(name => {
+      const b = document.createElement("button");
+      b.textContent = name;
+      if (name === current) b.className = "active";
+      b.onclick = () => { current = name; renderFilters(); };
+      filtersEl.appendChild(b);
+    });
+  }
+
+  function renderHistory() {
+    historyEl.innerHTML = "";
+    if (history.length === 0) {
+      historyEl.innerHTML = "<li>還沒有紀錄</li>";
+      return;
+    }
+    history.forEach(h => {
+      const li = document.createElement("li");
+      li.textContent = h;
+      historyEl.appendChild(li);
+    });
+  }
+
+  function pick() {
+    const list = pool();
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  goBtn.onclick = () => {
+    goBtn.disabled = true;
+    let count = 0;
+    const timer = setInterval(() => {
+      resultEl.textContent = pick();
+      count++;
+      if (count >= 15) {
+        clearInterval(timer);
+        const final = pick();
+        resultEl.textContent = "🎉 " + final;
+        history.unshift(final);
+        if (history.length > 8) history.pop();
+        renderHistory();
+        goBtn.disabled = false;
+      }
+    }, 90);
+  };
+
+  renderFilters();
+</script>
+</body>
+</html>
